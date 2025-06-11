@@ -8,31 +8,27 @@ import { getMatchesForTournament, updateMatchResult } from '../db';
 export default function TournamentViewScreen({ route, navigation }: any) {
   const { tournamentId } = route.params;
   const [matches, setMatches] = useState<any[]>([]);
-  const [results, setResults] = useState<{ [key: number]: { team1: string, team2: string } }>({});
+  const [results, setResults] = useState<{ [key: string]: { team1: string, team2: string } }>({});
 
   useEffect(() => {
     loadMatches();
   }, []);
 
   async function loadMatches() {
-  const data = await getMatchesForTournament(tournamentId);
-  // Usuń duplikaty po match_id
-  const uniqueMatches = Array.from(
-    new Map(data.map((m: any) => [m.match_id, m])).values()
-  );
-  setMatches(uniqueMatches);
-  const initialResults: any = {};
-  uniqueMatches.forEach((m: any) => {
-    initialResults[m.match_id] = {
-      team1: m.team1_wins?.toString() ?? '',
-      team2: m.team2_wins?.toString() ?? '',
-    };
-  });
-  setResults(initialResults);
-}
+    const data = await getMatchesForTournament(tournamentId);
+    setMatches(data);
+    const initialResults: any = {};
+    data.forEach((m: any) => {
+      initialResults[m.id] = {
+        team1: m.team1_wins?.toString() ?? '',
+        team2: m.team2_wins?.toString() ?? '',
+      };
+    });
+    setResults(initialResults);
+  }
 
 
-  function handleChange(matchId: number, team: 'team1' | 'team2', value: string) {
+  function handleChange(matchId: string, team: 'team1' | 'team2', value: string) {
     setResults((prev) => ({
       ...prev,
       [matchId]: {
@@ -45,10 +41,10 @@ export default function TournamentViewScreen({ route, navigation }: any) {
   async function saveResults() {
   try {
     for (const match of matches) {
-      const res = results[match.match_id];
+      const res = results[match.id];
       if (res.team1 !== '' && res.team2 !== '') {
         await updateMatchResult(
-          match.match_id,
+          match.id,
           parseInt(res.team1),
           parseInt(res.team2)
         );
@@ -75,27 +71,26 @@ export default function TournamentViewScreen({ route, navigation }: any) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>Harmonogram Gier</Text>
-      {matches.map((match) => (
-        <View key={match.match_id} style={styles.matchCard}>
+      <Text style={styles.header}>Harmonogram Gier</Text>      {matches.map((match) => (
+        <View key={match.id} style={styles.matchCard}>
           <Text style={styles.matchLabel}>
-            Mecz {match.match_order}: {match.player1_first} ({match.player1_nick}) vs {match.player2_first} ({match.player2_nick})
+            Mecz {match.match_order}: {match.playersInfo?.[0]?.name || 'Gracz 1'} ({match.playersInfo?.[0]?.nick || 'N/A'}) vs {match.playersInfo?.[1]?.name || 'Gracz 2'} ({match.playersInfo?.[1]?.nick || 'N/A'})
           </Text>
           <View style={styles.scoreRow}>
             <TextInput
               style={styles.input}
               keyboardType="numeric"
               placeholder="Team 1"
-              value={results[match.match_id]?.team1}
-              onChangeText={(text) => handleChange(match.match_id, 'team1', text)}
+              value={results[match.id]?.team1}
+              onChangeText={(text) => handleChange(match.id, 'team1', text)}
             />
             <Text style={styles.vs}>:</Text>
             <TextInput
               style={styles.input}
               keyboardType="numeric"
               placeholder="Team 2"
-              value={results[match.match_id]?.team2}
-              onChangeText={(text) => handleChange(match.match_id, 'team2', text)}
+              value={results[match.id]?.team2}
+              onChangeText={(text) => handleChange(match.id, 'team2', text)}
             />
           </View>
         </View>

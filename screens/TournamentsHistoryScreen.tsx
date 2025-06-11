@@ -14,7 +14,7 @@ export default function TournamentsHistoryScreen({ navigation }) {
     loadTournaments();
   }, []);
 
-  const handleDeleteTournament = (tournamentId: number) => {
+  const handleDeleteTournament = (tournamentId: string) => {
     Alert.alert(
       'Potwierdź usunięcie',
       'Czy na pewno chcesz usunąć ten turniej wraz ze wszystkimi meczami?',
@@ -38,14 +38,14 @@ export default function TournamentsHistoryScreen({ navigation }) {
       <Text style={styles.title}>Historia turniejów</Text>
       <FlatList
         data={tournaments}
-        keyExtractor={item => item.tournament_id.toString()}
+        keyExtractor={item => item.id}
         renderItem={({ item }) => (
           <View style={styles.tournamentRow}>
             <TouchableOpacity
               style={{ flex: 1 }}
               onPress={() =>
                 navigation.navigate('TournamentDetails', {
-                  tournamentId: item.tournament_id,
+                  tournamentId: item.id,
                   tournamentPlace: item.tournament_place,
                 })
               }
@@ -57,7 +57,7 @@ export default function TournamentsHistoryScreen({ navigation }) {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.deleteButton}
-              onPress={() => handleDeleteTournament(item.tournament_id)}
+              onPress={() => handleDeleteTournament(item.id)}
             >
               <Text style={styles.deleteButtonText}>Usuń</Text>
             </TouchableOpacity>

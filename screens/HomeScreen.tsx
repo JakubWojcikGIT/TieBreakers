@@ -53,7 +53,8 @@ export default function HomeScreen({ navigation }) {
           <MenuButton
             icon="ℹ️"
             title="O Aplikacji"
-            subtitle=""
+            subtitle="Dowiedz się więcej o TieBreakers"
+            onPress={() => navigation.navigate('About')}
           />
         </View>
 

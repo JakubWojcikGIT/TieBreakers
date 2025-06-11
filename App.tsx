@@ -7,6 +7,7 @@ import TournamentCreateScreen from './screens/TournamentCreateScreen';
 import TournamentViewScreen from './screens/TournamentViewScreen';
 import TournamentsHistoryScreen from './screens/TournamentsHistoryScreen';
 import TournamentDetailsScreen from './screens/TournamentDetailsScreen';
+import AboutScreen from './screens/AboutScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -20,6 +21,7 @@ export default function App() {
         <Stack.Screen name="TournamentView" component={TournamentViewScreen} options={{ title: 'Widok Turnieju' }} />
         <Stack.Screen name="TournamentsHistory" component={TournamentsHistoryScreen} options={{ title: 'Historia turniejów' }} />
         <Stack.Screen name="TournamentDetails" component={TournamentDetailsScreen} options={{ title: 'Szczegóły turnieju' }} />
+        <Stack.Screen name="About" component={AboutScreen} options={{ title: 'O Aplikacji' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

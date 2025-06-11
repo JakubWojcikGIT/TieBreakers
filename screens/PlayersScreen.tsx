@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView, View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert, Keyboard, StatusBar, ScrollView } from 'react-native';
-import { addPlayer, getPlayers, deletePlayer, setupDatabase } from '../db';
+import { addPlayer, getPlayers, deletePlayer } from '../db';
 
 export default function PlayersScreen() {
   const [players, setPlayers] = useState<any[]>([]);
@@ -17,57 +17,53 @@ export default function PlayersScreen() {
   };
 
   useEffect(() => {
-  const init = async () => {
-    await setupDatabase();
-    await loadPlayers();
-  };
-  init();
-}, []);
+    loadPlayers();
+  }, []);
 
 
   // Dodaj gracza do bazy
-const handleAddPlayer = async () => {
-  console.log('▶ Próba dodania gracza');
+  const handleAddPlayer = async () => {
+    console.log('▶ Próba dodania gracza');
 
-  if (!firstName || !lastName || !nickName || !email || !homePlace) {
-    Alert.alert('Uwaga', 'Wypełnij wszystkie pola!');
-    return;
-  }
+    if (!firstName || !lastName || !nickName || !email || !homePlace) {
+      Alert.alert('Uwaga', 'Wypełnij wszystkie pola!');
+      return;
+    }
 
-  try {
-    await addPlayer(firstName, lastName, nickName, email, homePlace);
-    console.log('✅ Dodano gracza');
-  } catch (e) {
-    console.error('❌ Błąd przy dodawaniu gracza:', e);
-  }
+    try {
+      await addPlayer(firstName, lastName, nickName, email, homePlace);
+      console.log('✅ Dodano gracza');
+    } catch (e) {
+      console.error('❌ Błąd przy dodawaniu gracza:', e);
+    }
 
-  setFirstName('');
-  setLastName('');
-  setNickName('');
-  setEmail('');
-  setHomePlace('');
-  Keyboard.dismiss();
-  await loadPlayers();
-};
+    setFirstName('');
+    setLastName('');
+    setNickName('');
+    setEmail('');
+    setHomePlace('');
+    Keyboard.dismiss();
+    await loadPlayers();
+  };
 
-const handleDeletePlayer = (playerId: number) => {
-  Alert.alert('Potwierdź', 'Czy na pewno chcesz usunąć tego gracza?', [
-    { text: 'Anuluj', style: 'cancel' },
-    {
-      text: 'Usuń',
-      style: 'destructive',
-      onPress: async () => {
-        try {
-          await deletePlayer(playerId);
-          await loadPlayers();
-          console.log(`🗑️ Usunięto gracza o ID ${playerId}`);
-        } catch (e) {
-          console.error('❌ Błąd usuwania gracza:', e);
-        }
+  const handleDeletePlayer = (playerId: string) => {
+    Alert.alert('Potwierdź', 'Czy na pewno chcesz usunąć tego gracza?', [
+      { text: 'Anuluj', style: 'cancel' },
+      {
+        text: 'Usuń',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deletePlayer(playerId);
+            await loadPlayers();
+            console.log(`🗑️ Usunięto gracza o ID ${playerId}`);
+          } catch (e) {
+            console.error('❌ Błąd usuwania gracza:', e);
+          }
+        },
       },
-    },
-  ]);
-};
+    ]);
+  };
 
 
   return (
@@ -75,7 +71,7 @@ const handleDeletePlayer = (playerId: number) => {
     <StatusBar barStyle="dark-content" />
     <FlatList
       data={players}
-      keyExtractor={item => item.player_id.toString()}
+      keyExtractor={item => item.id}
       renderItem={({ item }) => (
         <View style={styles.playerRow}>
           <View>
@@ -88,7 +84,7 @@ const handleDeletePlayer = (playerId: number) => {
           </View>
           <TouchableOpacity
             style={styles.deleteButton}
-            onPress={() => handleDeletePlayer(item.player_id)}
+            onPress={() => handleDeletePlayer(item.id)}
           >
             <Text style={styles.deleteButtonText}>Usuń</Text>
           </TouchableOpacity>
@@ -97,7 +93,7 @@ const handleDeletePlayer = (playerId: number) => {
       ListEmptyComponent={<Text style={styles.emptyList}>Brak graczy.</Text>}
       ListHeaderComponent={
         <>
-          <Text style={styles.title}>Gracze!</Text>
+          <Text style={styles.title}>Gracze</Text>
           {/* Formularz dodawania gracza */}
           <View style={styles.form}>
             <TextInput

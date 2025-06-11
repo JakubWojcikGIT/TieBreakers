@@ -9,11 +9,7 @@ export default function TournamentDetailsScreen({ route }) {
   useEffect(() => {
     const load = async () => {
       const data = await getMatchesByTournamentId(tournamentId);
-        // Usuń duplikaty po match_id
-    const uniqueMatches = Array.from(
-    new Map(data.map((m: any) => [m.match_id, m])).values()
-    );
-    setMatches(uniqueMatches);
+      setMatches(data);
     };
     load();
   }, [tournamentId]);
@@ -24,16 +20,28 @@ export default function TournamentDetailsScreen({ route }) {
       <Text style={styles.title}>Turniej: {tournamentPlace}</Text>
       <FlatList
         data={matches}
-        keyExtractor={item => item.match_id.toString()}
-        renderItem={({ item }) => (
+        keyExtractor={item => item.id}        renderItem={({ item }) => (
           <View style={styles.matchRow}>
-            <Text style={styles.matchInfo}>
-                Mecz #{item.match_order} • Wynik: 
-                {(item.team1_wins !== null && item.team2_wins !== null)
-                    ? `${item.team1_wins}:${item.team2_wins}`
-                    : 'brak wyniku'}
+            <Text style={styles.matchHeader}>Mecz #{item.match_order}</Text>
+            <View style={styles.playersContainer}>
+              <Text style={styles.playersText}>
+                {item.playersInfo?.[0]?.name || 'Gracz 1'} ({item.playersInfo?.[0]?.nick || 'N/A'})
+              </Text>
+              <Text style={styles.vsText}>VS</Text>
+              <Text style={styles.playersText}>
+                {item.playersInfo?.[1]?.name || 'Gracz 2'} ({item.playersInfo?.[1]?.nick || 'N/A'})
+              </Text>
+            </View>
+            <Text style={styles.resultText}>
+              Wynik: {(item.team1_wins !== undefined && item.team2_wins !== undefined)
+                ? `${item.team1_wins}:${item.team2_wins}`
+                : 'Brak wyniku'}
             </Text>
-            {/* Możesz dodać szczegóły graczy, wyników itd. */}
+            {item.winner_team_number && (
+              <Text style={styles.winnerText}>
+                Zwycięzca: {item.playersInfo?.[item.winner_team_number - 1]?.name || `Zespół ${item.winner_team_number}`}
+              </Text>
+            )}
           </View>
         )}
         ListEmptyComponent={<Text style={styles.emptyList}>Brak meczów w tym turnieju.</Text>}
@@ -52,6 +60,43 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 14,
     marginBottom: 10,
+  },
+  matchHeader: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    color: '#333', 
+    marginBottom: 8 
+  },
+  playersContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  playersText: { 
+    fontSize: 14, 
+    color: '#555',
+    flex: 1,
+    textAlign: 'center'
+  },
+  vsText: { 
+    fontSize: 14, 
+    fontWeight: 'bold', 
+    color: '#007a32',
+    marginHorizontal: 10
+  },
+  resultText: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 4
+  },
+  winnerText: { 
+    fontSize: 14, 
+    fontWeight: 'bold', 
+    color: '#007a32',
+    textAlign: 'center'
   },
   matchInfo: { fontSize: 16, color: '#333' },
   emptyList: { color: '#bbb', fontStyle: 'italic', marginTop: 20, textAlign: 'center' },
