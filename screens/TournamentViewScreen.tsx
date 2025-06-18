@@ -4,6 +4,7 @@ import {
   View, Text, StyleSheet, TextInput, Button, FlatList, Alert, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { getMatchesForTournament, updateMatchResult, addTournamentWithMatches, getPlayers, addDebelTournamentWithMatches } from '../db';
+import type { Player } from '../db';
 
 export default function TournamentViewScreen({ route, navigation }: any) {
   const { tournamentId, tournamentData } = route.params;
@@ -37,54 +38,69 @@ export default function TournamentViewScreen({ route, navigation }: any) {
     setResults(initialResults);
     setLoading(false);
   }
+  // --- Algorytm Round Robin (circle method) ---
+  function generateRoundRobinSchedule(players: Player[]) {
+    const n = players.length;
+    const isOdd = n % 2 !== 0;
+    const playerList = isOdd ? [...players, { id: 'bye', name: 'wolny los' }] : [...players];
+    const rounds = playerList.length - 1;
+    const half = playerList.length / 2;
+    const schedule = [];
+    for (let round = 0; round < rounds; round++) {
+      const matches = [];
+      for (let i = 0; i < half; i++) {
+        const p1 = playerList[i];
+        const p2 = playerList[playerList.length - 1 - i];
+        if (p1.id !== 'bye' && p2.id !== 'bye') {
+          matches.push([p1, p2]);
+        }
+      }
+      schedule.push(matches);
+      // rotate
+      playerList.splice(1, 0, playerList.pop());
+    }
+    return schedule;
+  }
   async function generateMatchesLocally() {
     setLoading(true);
     try {
       const { playerIds, roundsToWin } = tournamentData;
-      
-      // Pobierz dane graczy z bazy, aby wyświetlić ich nazwiska
-      const playersSnapshot = await getPlayers();
-      const playersData = playerIds.map(playerId => {
-        const player = playersSnapshot.find((p: any) => p.id === playerId) as any;
+      const playersSnapshot: Player[] = await getPlayers();
+      const playersData: Player[] = playerIds.map((playerId: string) => {
+        const player = playersSnapshot.find((p) => p.id === playerId);
         if (player) {
-          return {
-            id: playerId,
-            name: `${player.first_name} ${player.last_name}`,
-            nick: player.nick_name
-          };
+          return player;
         }
-        return { id: playerId, name: 'Gracz', nick: 'N/A' };
+        // fallback dummy player (should not happen)
+        return {
+          id: playerId,
+          first_name: 'Gracz',
+          last_name: '',
+          nick_name: 'N/A',
+          created_at: '',
+        } as Player;
       });
-      
-      // Wygeneruj mecze lokalnie
+      // --- Użyj Round Robin ---
+      const schedule = generateRoundRobinSchedule(playersData);
       const localMatches = [];
       let matchOrder = 1;
-      
-      for (let i = 0; i < playerIds.length; i++) {
-        for (let j = i + 1; j < playerIds.length; j++) {
-          const tempId = `temp_${i}_${j}`;
-          const match = {
+      schedule.forEach((round, roundIdx) => {
+        round.forEach(([p1, p2]) => {
+          const tempId = `temp_${p1.id}_${p2.id}`;
+          localMatches.push({
             id: tempId,
             match_order: matchOrder++,
-            players: [playerIds[i], playerIds[j]],
+            players: [p1.id, p2.id],
             roundsToWin: roundsToWin,
-            playersInfo: [
-              playersData[i] || { id: playerIds[i], name: 'Gracz 1', nick: 'N/A' },
-              playersData[j] || { id: playerIds[j], name: 'Gracz 2', nick: 'N/A' }
-            ]
-          };
-          localMatches.push(match);
-        }
-      }
-      
+            playersInfo: [p1, p2],
+            round: roundIdx + 1,
+          });
+        });
+      });
       setMatches(localMatches);
-      
-      const initialResults: any = {};
-      localMatches.forEach((m: any) => {
-        initialResults[m.id] = {
-          team1: '',
-          team2: '',
-        };
+      const initialResults = {};
+      localMatches.forEach((m) => {
+        initialResults[m.id] = { team1: '', team2: '' };
       });
       setResults(initialResults);
     } catch (e) {
@@ -288,7 +304,7 @@ export default function TournamentViewScreen({ route, navigation }: any) {
             return (
               <View key={match.id} style={styles.matchCard}>
                 <Text style={styles.matchLabel}>
-                  Mecz {match.match_order}: {match.playersInfo?.[0]?.name || 'Gracz 1'} ({match.playersInfo?.[0]?.nick || 'N/A'}) vs {match.playersInfo?.[1]?.name || 'Gracz 2'} ({match.playersInfo?.[1]?.nick || 'N/A'})
+                  Mecz {match.match_order}: {match.playersInfo?.[0]?.first_name || 'Gracz 1'} {match.playersInfo?.[0]?.last_name || ''} ({match.playersInfo?.[0]?.nick_name || 'N/A'}) vs {match.playersInfo?.[1]?.first_name || 'Gracz 2'} {match.playersInfo?.[1]?.last_name || ''} ({match.playersInfo?.[1]?.nick_name || 'N/A'})
                 </Text>
                 <View style={styles.scoreRow}>
                   <TextInput

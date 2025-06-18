@@ -9,7 +9,8 @@ dayjs.extend(timezone);
 dayjs.locale('pl');
 
 // Dodaj gracza
-type Player = {
+export type Player = {
+  id?: string;
   first_name: string;
   last_name: string;
   nick_name: string;
@@ -33,9 +34,9 @@ export async function addPlayer(
   await addDoc(collection(db, "players"), player);
 }
 
-export async function getPlayers() {
+export async function getPlayers(): Promise<Player[]> {
   const snapshot = await getDocs(collection(db, "players"));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Player));
 }
 
 export async function deletePlayer(playerId: string) {
