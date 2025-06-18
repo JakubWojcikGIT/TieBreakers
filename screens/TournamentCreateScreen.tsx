@@ -12,6 +12,7 @@ export default function TournamentCreateScreen({ navigation }: any) {
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
   const [roundsToWin, setRoundsToWin] = useState('2');
   const [place, setPlace] = useState('');
+  const [tournamentType, setTournamentType] = useState('singiel');
 
   useEffect(() => {
     loadPlayers();
@@ -30,21 +31,39 @@ export default function TournamentCreateScreen({ navigation }: any) {
     );
   }
 
+  function handleTournamentTypeChange(type: string) {
+    setTournamentType(type);
+  }
+
   async function startTournament() {
-    if (!place || selectedPlayers.length < 2) {
-      Alert.alert('Błąd', 'Podaj nazwę miejsca i wybierz min. 2 graczy');
+    if (!place || selectedPlayers.length < (tournamentType === 'debel' ? 4 : 2)) {
+      Alert.alert('Błąd', `Podaj nazwę miejsca i wybierz min. ${tournamentType === 'debel' ? 4 : 2} graczy`);
+      return;
+    }
+
+    if (tournamentType === 'debel' && selectedPlayers.length % 2 !== 0) {
+      Alert.alert('Błąd', 'Liczba graczy musi być parzysta dla trybu debel');
       return;
     }
 
     const parsedRounds = parseInt(roundsToWin);
     if (isNaN(parsedRounds) || parsedRounds < 1) {
-      Alert.alert('Błąd', 'Podaj poprawną liczbę wygranych rund (np. 2 dla Bo3)');
+      Alert.alert('Błąd', 'Podaj poprawną liczbę wygranych rund');
       return;
     }
 
     try {
-      const tournamentId = await addTournamentWithMatches(place, selectedPlayers, parsedRounds);
-      navigation.navigate('TournamentView', { tournamentId });
+      const baseTournamentData = {
+        place,
+        playerIds: selectedPlayers,
+        roundsToWin: parsedRounds,
+        type: tournamentType,
+      };
+      if (tournamentType === 'debel') {
+        navigation.navigate('TeamPairing', { tournamentData: baseTournamentData });
+      } else {
+        navigation.navigate('TournamentView', { tournamentData: baseTournamentData });
+      }
     } catch (e) {
       console.error('❌ Błąd przy tworzeniu turnieju:', e);
       Alert.alert('Błąd', 'Nie udało się utworzyć turnieju');
@@ -62,13 +81,13 @@ export default function TournamentCreateScreen({ navigation }: any) {
             <View>
               <Text style={styles.label}>Miejsce rozgrywek</Text>
               <TextInput
-                placeholder="Korty Warszawa"
+                placeholder="Kijewo Królewskie"
                 value={place}
                 onChangeText={setPlace}
                 style={styles.input}
               />
 
-              <Text style={styles.label}>Do ilu wygranych gemów (np. 2 = Bo3)</Text>
+              <Text style={styles.label}>Do ilu wygranych gemów</Text>
               <TextInput
                 keyboardType="numeric"
                 value={roundsToWin}
@@ -77,6 +96,21 @@ export default function TournamentCreateScreen({ navigation }: any) {
               />
 
               <Text style={styles.label}>Wybierz graczy ({selectedPlayers.length})</Text>
+
+              <View style={styles.typeSelector}>
+                <TouchableOpacity
+                  style={[styles.typeButton, tournamentType === 'singiel' && styles.selectedTypeButton]}
+                  onPress={() => handleTournamentTypeChange('singiel')}
+                >
+                  <Text style={styles.typeButtonText}>Singiel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.typeButton, tournamentType === 'debel' && styles.selectedTypeButton]}
+                  onPress={() => handleTournamentTypeChange('debel')}
+                >
+                  <Text style={styles.typeButtonText}>Debel</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           );
         }
@@ -148,5 +182,29 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  typeSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  typeButton: {
+    flex: 1,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#007a32',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  selectedTypeButton: {
+    backgroundColor: '#e6ffe6',
+  },
+  typeButtonText: {
+    color: '#007a32',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  form: {
+    marginTop: 20,
   },
 });

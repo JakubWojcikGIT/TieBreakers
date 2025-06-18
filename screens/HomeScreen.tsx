@@ -34,6 +34,12 @@ export default function HomeScreen({ navigation }) {
             onPress={() => navigation.navigate('TournamentCreate')}
           />
           <MenuButton
+            icon="🎾"
+            title="Nowy pojedyńczy mecz"
+            subtitle="Szybki mecz singiel/debel"
+            onPress={() => navigation.navigate('SingleMatchCreate')}
+          />
+          <MenuButton
             icon="👥"
             title="Gracze"
             subtitle="Dodaj / usuń graczy, przeglądaj bazę"
@@ -43,6 +49,7 @@ export default function HomeScreen({ navigation }) {
             icon="📊"
             title="Wyniki"
             subtitle="Podgląd meczów, filtrowanie i sortowanie"
+            onPress={() => navigation.navigate('GlobalStats')}
           />
           <MenuButton
             icon="📅"

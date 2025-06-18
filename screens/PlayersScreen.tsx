@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { SafeAreaView, View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert, Keyboard, StatusBar, ScrollView } from 'react-native';
+import { SafeAreaView, View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert, Keyboard, StatusBar, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { addPlayer, getPlayers, deletePlayer } from '../db';
+import * as ImagePicker from 'expo-image-picker';
+import { IMGUR_CLIENT_ID } from '../imgurConfig';
 
 export default function PlayersScreen() {
   const [players, setPlayers] = useState<any[]>([]);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [nickName, setNickName] = useState('');
-  const [email, setEmail] = useState('');
-  const [homePlace, setHomePlace] = useState('');
+  const [profileImage, setProfileImage] = useState<string | undefined>(undefined);
 
   // Pobierz graczy z bazy przy starcie i po każdej zmianie
   const loadPlayers = async () => {
@@ -21,17 +22,56 @@ export default function PlayersScreen() {
   }, []);
 
 
+  // Funkcja uploadu do Imgur
+  async function uploadImageToImgur(imageUri: string): Promise<string> {
+    const apiUrl = 'https://api.imgur.com/3/image';
+    const clientId = IMGUR_CLIENT_ID;
+
+    // Zamień obrazek na base64
+    const response = await fetch(imageUri);
+    const blob = await response.blob();
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    const result = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Client-ID ${clientId}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ image: base64, type: 'base64' }),
+    });
+    const data = await result.json();
+    if (!data.success) throw new Error('Upload failed');
+    return data.data.link;
+  }
+
   // Dodaj gracza do bazy
   const handleAddPlayer = async () => {
     console.log('▶ Próba dodania gracza');
 
-    if (!firstName || !lastName || !nickName || !email || !homePlace) {
+    if (!firstName || !lastName || !nickName) {
       Alert.alert('Uwaga', 'Wypełnij wszystkie pola!');
       return;
     }
 
+    let imageUrl = '';
+    if (profileImage) {
+      try {
+        imageUrl = await uploadImageToImgur(profileImage);
+      } catch (e) {
+        Alert.alert('Błąd', 'Nie udało się wysłać zdjęcia.');
+        return;
+      }
+    }
+
     try {
-      await addPlayer(firstName, lastName, nickName, email, homePlace);
+      await addPlayer(firstName, lastName, nickName, imageUrl);
       console.log('✅ Dodano gracza');
     } catch (e) {
       console.error('❌ Błąd przy dodawaniu gracza:', e);
@@ -40,10 +80,22 @@ export default function PlayersScreen() {
     setFirstName('');
     setLastName('');
     setNickName('');
-    setEmail('');
-    setHomePlace('');
+    setProfileImage(undefined);
     Keyboard.dismiss();
     await loadPlayers();
+  };
+
+  // Obsługa wyboru zdjęcia
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images',
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setProfileImage(result.assets[0].uri);
+    }
   };
 
   const handleDeletePlayer = (playerId: string) => {
@@ -65,85 +117,97 @@ export default function PlayersScreen() {
     ]);
   };
 
-
   return (
   <SafeAreaView style={styles.safeArea}>
     <StatusBar barStyle="dark-content" />
-    <FlatList
-      data={players}
-      keyExtractor={item => item.id}
-      renderItem={({ item }) => (
-        <View style={styles.playerRow}>
-          <View>
-            <Text style={styles.playerName}>
-              {item.first_name} {item.last_name} ({item.nick_name})
-            </Text>
-            <Text style={styles.playerInfo}>
-              {item.email} • {item.home_place}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={() => handleDeletePlayer(item.id)}
-          >
-            <Text style={styles.deleteButtonText}>Usuń</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-      ListEmptyComponent={<Text style={styles.emptyList}>Brak graczy.</Text>}
-      ListHeaderComponent={
-        <>
-          <Text style={styles.title}>Gracze</Text>
-          {/* Formularz dodawania gracza */}
-          <View style={styles.form}>
-            <TextInput
-              style={styles.input}
-              placeholder="Imię"
-              value={firstName}
-              onChangeText={setFirstName}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Nazwisko"
-              value={lastName}
-              onChangeText={setLastName}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Nick"
-              value={nickName}
-              onChangeText={setNickName}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Miejsce zamieszkania"
-              value={homePlace}
-              onChangeText={setHomePlace}
-            />
-            <TouchableOpacity style={styles.addButton} onPress={handleAddPlayer}>
-              <Text style={styles.addButtonText}>Dodaj gracza</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.listTitle}>Lista graczy</Text>
-        </>
-      }
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-    />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <FlatList
+        data={players}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => {
+          let imageSource;
+          if (item.profile_image_uri && item.profile_image_uri !== 'default' && item.profile_image_uri !== '') {
+            // Jeśli to lokalny plik, dodaj prefix file:// jeśli go brakuje
+            if (
+              item.profile_image_uri.startsWith('http') ||
+              item.profile_image_uri.startsWith('content://') ||
+              item.profile_image_uri.startsWith('file://')
+            ) {
+              imageSource = { uri: item.profile_image_uri };
+            } else {
+              imageSource = { uri: 'file://' + item.profile_image_uri };
+            }
+          } else {
+            imageSource = require('../assets/blanc_picture.jpg');
+          }
+          return (
+            <View style={styles.playerRow}>
+              <Image source={imageSource} style={{ width: 48, height: 48, borderRadius: 24, marginRight: 12 }} />
+              <View style={styles.playerInfoContainer}>
+                <Text style={styles.playerName}>
+                  {item.first_name} {item.last_name} ({item.nick_name})
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => handleDeletePlayer(item.id)}
+              >
+                <Text style={styles.deleteButtonText}>Usuń</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        }}
+        ListEmptyComponent={<Text style={styles.emptyList}>Brak graczy.</Text>}
+        ListHeaderComponent={
+          <>
+            <Text style={styles.title}>Gracze</Text>
+            {/* Formularz dodawania gracza */}
+            <View style={styles.form}>
+              <TextInput
+                style={styles.input}
+                placeholder="Imię"
+                value={firstName}
+                onChangeText={setFirstName}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Nazwisko"
+                value={lastName}
+                onChangeText={setLastName}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Nick"
+                value={nickName}
+                onChangeText={setNickName}
+              />
+              <TouchableOpacity style={[styles.addButton, { backgroundColor: '#4682b4' }]} onPress={pickImage}>
+                <Text style={styles.addButtonText}>{profileImage ? 'Zmień zdjęcie' : 'Dodaj zdjęcie profilowe'}</Text>
+              </TouchableOpacity>
+              {profileImage && (
+                <Image source={{ uri: profileImage }} style={{ width: 64, height: 64, borderRadius: 32, alignSelf: 'center', marginBottom: 10 }} />
+              )}
+              <TouchableOpacity style={styles.addButton} onPress={handleAddPlayer}>
+                <Text style={styles.addButtonText}>Dodaj gracza</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.listTitle}>Lista graczy</Text>
+          </>
+        }
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      />
+    </KeyboardAvoidingView>
   </SafeAreaView>
 );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#fff' },
-  container: { padding: 18, alignItems: 'center', flexGrow: 1 },
+const styles = StyleSheet.create({  safeArea: { flex: 1, backgroundColor: '#fff' },
+  container: { padding: 18, width: '100%', flexGrow: 1 },
   title: { fontSize: 28, fontWeight: 'bold', marginVertical: 16, color: '#222' },
   form: { width: '100%', marginBottom: 20 },
   input: {
@@ -180,6 +244,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
+  playerInfoContainer: { flex: 1 },
   playerName: { fontSize: 16, fontWeight: '600', color: '#222' },
   playerInfo: { fontSize: 13, color: '#888', marginTop: 2 },
   deleteButton: {
